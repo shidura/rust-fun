@@ -28,6 +28,7 @@ bold=$'\e[1m'
 gs_install=false
 gs_clean=false
 gs_build=false
+gs_format=false
 gs_sym_links=false
 gs_create_project=false
 gs_project_name=""
@@ -40,6 +41,7 @@ usage() {
     printf "%s | %-25s  %-5s\n" "-i" "--install"                "Installs the rust compiler and cargo"
     printf "%s | %-25s  %-5s\n" "-c" "--clean"                  "Cleans the build directory"
     printf "%s | %-25s  %-5s\n" "-b" "--build"                  "Builds all the apps"
+    printf "%s | %-25s  %-5s\n" "-f" "--format"                 "Format code in all the apps"
     printf "%s | %-25s  %-5s\n" "-l" "--links"                  "Creates a symbolic link of all the executable in the executables dir"
     printf "%s | %-25s  %-5s\n" "-p" "--project <project-name>" "Creates a project folder with the provided name based on the template"
     printf "${normal}\n"
@@ -47,8 +49,8 @@ usage() {
 }
 
 #parameter parsing
-short_options=h,i,c,b,l,p:
-long_options=help,install,clean,build,links,project:
+short_options=h,i,c,b,f,l,p:
+long_options=help,install,clean,build,format,links,project:
 
 script_options=$(getopt --options=${short_options} --longoptions=${long_options} --name "${0}" -- "$@")
 if [[ $? -ne 0 ]]; then
@@ -78,6 +80,10 @@ while true ; do
         ;;
     -b|--build)
         gs_build=true
+        shift
+        ;;
+    -f|--format)
+        gs_format=true
         shift
         ;;
     -l|--links)
@@ -121,6 +127,11 @@ if [[ ! -f $PWD/apps/Cargo.toml ]]; then
     printf "members = [\n" >> "$PWD/apps/Cargo.toml"
     printf "]\n" >> "$PWD/apps/Cargo.toml"
 
+fi
+
+if [[ ! -f $PWD/apps/rustfmt.toml ]]; then
+    printf "${yellow}Creating:${normal} ${bold}$PWD/apps/rustfmt.toml${normal}\n"
+    printf "max_width=120" >> "$PWD/apps/rustfmt.toml"
 fi
 
 if [[ ${gs_clean=} == true ]]; then
@@ -170,6 +181,18 @@ if [[ ${gs_build} == true ]]; then
                 ln -sfn "$PWD/${i}" "../executables/$(basename ${i})"
             done
         fi
+    fi
+
+    popd > /dev/null
+fi
+
+if [[ ${gs_format} == true ]]; then
+    printf "${green}Formatting all projects${normal}\n"
+    pushd $PWD/apps > /dev/null
+
+    cargo fmt --all
+    if [[ $? -ne 0 ]]; then
+        exit 13
     fi
 
     popd > /dev/null
