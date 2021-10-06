@@ -6,11 +6,6 @@ if [[ $? -ne 4 ]]; then
     exit 1
 fi
 
-which gsed > /dev/null
-if [[ $? -ne 0 ]]; then
-    printf "${red}Install gnu-sed in mac${normal}\n"
-fi
-
 # Exit the script as soon as a command fails
 # set -exit
 set -o pipefail
@@ -102,9 +97,32 @@ while true ; do
     esac
 done
 
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Linux*)     
+        printf "${green}Running on Linux!${normal}\n"
+        gs_sed="sed"
+        gs_find="find"
+        ;;
+    Darwin*)    
+        printf "${green}Running on MacOS!${normal}\n"
+        gs_sed="gsed"
+        gs_find="gfind"
+        ;;
+    *)      
+        printf "${red}Unsupported OS!${normal}\n"
+        ;;
+esac
+
+which ${gs_sed} > /dev/null
+if [[ $? -ne 0 ]]; then
+    printf "${red}Install gnu-sed${normal}\n"
+fi
+
 if [[ ${gs_install} == true ]]; then
     printf "${green}Installing rustup${normal}\n"
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    source $HOME/.cargo/env
     rustup update
 
     cargo_version=$( cargo --version )
@@ -149,7 +167,7 @@ if [[ ${gs_create_project} == true ]]; then
 
         grep ${gs_project_name} "./Cargo.toml" > /dev/null
         if [[ $? -ne 0 ]]; then 
-            gsed -i "$ s/]/    \"${gs_project_name}\",/" Cargo.toml
+            ${gs_sed} -i "$ s/]/    \"${gs_project_name}\",/" Cargo.toml
             printf "]\n" >> "./Cargo.toml"
         fi
 
@@ -175,7 +193,7 @@ if [[ ${gs_build} == true ]]; then
 
             rm -rf ../executables/*
             mkdir -p ../executables
-            exe_files=($( gfind ./target/debug -executable -type f | grep -v bin | grep -v out | grep -v lock | grep -v deps))
+            exe_files=($( ${gs_find} ./target/debug -executable -type f | grep -v bin | grep -v out | grep -v lock | grep -v deps))
             for i in "${exe_files[@]}"
             do 
                 ln -sfn "$PWD/${i}" "../executables/$(basename ${i})"
